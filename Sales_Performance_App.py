@@ -9,12 +9,12 @@ from pptx import Presentation
 # --- Sayfa Yapılandırma ---
 st.set_page_config(
     page_title="Satış Analizi Dashboard",
-    page_icon="Turkcell.png",
+    page_icon="Logo.jpg",
     layout="wide"
 )
 
 # --- Sidebar: Logo ve Veri Yükleme ---
-st.sidebar.image("Turkcell.png", width=150)
+st.sidebar.image("Logo.jpg", width=150)
 st.sidebar.title("📂 Veri Yükle")
 excel_file = st.sidebar.file_uploader("Excel dosyasını yükleyin", type=["xlsx", "xls"])
 
