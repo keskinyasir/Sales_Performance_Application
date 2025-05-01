@@ -13,18 +13,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Başlık ve Logo ---
-logo = Image.open("Turkcell.png")
-col1, col2 = st.columns([1, 8])
-with col1:
-    st.image(logo, width=80)
-with col2:
-    st.markdown(
-        "<h1 style='margin: 0; padding: 0;'>Satış Analizi Dashboard</h1>",
-        unsafe_allow_html=True
-    )
-
-# --- Sidebar: Veri Yükleme ---
+# --- Sidebar: Logo ve Veri Yükleme ---
+st.sidebar.image("Turkcell.png", width=150)
 st.sidebar.title("📂 Veri Yükle")
 excel_file = st.sidebar.file_uploader("Excel dosyasını yükleyin", type=["xlsx", "xls"])
 
@@ -33,6 +23,10 @@ if excel_file:
     df_sales = pd.read_excel(excel_file, sheet_name=0)
     df_cross = pd.read_excel(excel_file, sheet_name=1)
     df_demo = pd.read_excel(excel_file, sheet_name=2)
+
+    # Başlık
+    st.title("Satış Analizi Dashboard")
+    st.markdown("Bu uygulama 2021-2022 dönemine ait satış, çapraz satış ve demografi verilerini analiz eder.")
 
     # --- Sekmeler ---
     tab1, tab2, tab3 = st.tabs(["Veri Önizleme", "EDA & Görselleştirme", "Tahmin & Rapor"])
