@@ -20,9 +20,9 @@ excel_file = st.sidebar.file_uploader("Excel dosyasını yükleyin", type=["xlsx
 
 if excel_file:
     # Veri Yükleme
-    df_sales = pd.read_excel(excel_file, sheet_name=0)
-    df_cross = pd.read_excel(excel_file, sheet_name=1)
-    df_demo = pd.read_excel(excel_file, sheet_name=2)
+    df_sales = pd.read_excel(excel_file, sheet_name="SATIŞ")
+    df_cross = pd.read_excel(excel_file, sheet_name="ÇAPRAZ SATIŞ")
+    df_demo = pd.read_excel(excel_file, sheet_name="ILCE DEMOGRAFI")
 
     # Başlık
     st.title("Satış Analizi Dashboard")
