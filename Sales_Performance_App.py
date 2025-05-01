@@ -3,7 +3,6 @@ import pandas as pd
 from prophet import Prophet
 from prophet.plot import plot_plotly
 import plotly.express as px
-import python_pptx
 from pptx import Presentation
 from pptx.util import Inches
 
