@@ -5,7 +5,6 @@ import plotly.express as px
 from prophet import Prophet
 from prophet.plot import plot_plotly
 from pptx import Presentation
-import requests
 import json
 
 # --- Sayfa Yapılandırma ---
@@ -55,14 +54,18 @@ if excel_file:
         st.plotly_chart(fig1, use_container_width=True)
 
         st.subheader("Şube Performansı Haritası (İl Bazında)")
-        # Province mapping
+        # Şube ile şehir eşleştirme
         dealer_city = df_cross[['DEALER_CODE', 'CITY']].drop_duplicates()
         df_sales_map = df_sales.merge(dealer_city, on='DEALER_CODE', how='left')
         df_city_sales = df_sales_map.groupby('CITY')['URUNADET'].sum().reset_index()
 
-        # GeoJSON of Turkish provinces
-        geojson_url = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/turkey-provinces.geojson'
-        geojson_data = requests.get(geojson_url).json()
+        # GeoJSON: tr-cities.json dosyası proje kökünde olmalıdır
+        try:
+            with open('tr-cities.json', 'r', encoding='utf-8') as f:
+                geojson_data = json.load(f)
+        except FileNotFoundError:
+            st.error("GeoJSON dosyası bulunamadı. 'tr-cities.json' dosyasını proje köküne ekleyin.")
+            st.stop()
 
         fig_map = px.choropleth_mapbox(
             df_city_sales,
