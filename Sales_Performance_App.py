@@ -130,62 +130,68 @@ if excel_file:
     # -------- TAHMİN & RAPOR --------
     with tab3:
         st.subheader("2023 Ocak Tahmini – Kanal Bazlı ve Regresörlü Model")
-        # Kanal seçenekleri
         channels = ['DIJITAL','FIZIKSEL']
         if st.button("Tahmini Hesapla"):
             results = []
-            # Hazırlık: dealer-channel eşlemesi
             dealer_channel = df_cross[['DEALER_CODE','KANAL']].drop_duplicates()
             df_sales_map = df_sales.merge(dealer_channel, on='DEALER_CODE', how='left')
 
             for kanal in channels:
-                # 1) Birleştirilmiş aylık veri
-                # Ana ürün
-                main = (df_sales_map[df_sales_map['KANAL']==kanal]
-                        .groupby('YEARMONTH')[['URUNADET','URUNHACIM',
-                                                'ABONE_YAS_0_3AY','ABONE_YAS_4_12AY',
-                                                'ABONE_YAS_1_3YAS','ABONE_YAS_3_YAS']]
-                        .sum().reset_index())
+                # Ana ürün aylık veri
+                main = (
+                    df_sales_map[df_sales_map['KANAL']==kanal]
+                    .groupby('YEARMONTH')[['URUNADET','URUNHACIM',
+                                            'ABONE_YAS_0_3AY','ABONE_YAS_4_12AY',
+                                            'ABONE_YAS_1_3YAS','ABONE_YAS_3_YAS']]
+                    .sum().reset_index()
+                )
                 main.columns = ['periode','URUNADET','URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS']
-                # Çapraz ürün
-                cross = (df_cross[df_cross['KANAL']==kanal]
-                         .groupby('AY')[['ÇAPRAZ ÜRÜN ADET','5GUNIPTAL','6-45GUNIPTAL']]
-                         .sum().reset_index())
+                # Çapraz ürün aylık veri
+                cross = (
+                    df_cross[df_cross['KANAL']==kanal]
+                    .groupby('AY')[['ÇAPRAZ ÜRÜN ADET','5GUNIPTAL','6-45GUNIPTAL']]
+                    .sum().reset_index()
+                )
                 cross.columns = ['periode','CROSS_SALES','CANCEL_5D','CANCEL_6_45D']
 
-                # Tarih sütunu
+                # Tarih dönüştürme
                 main['ds'] = pd.to_datetime(main['periode'], format='%Y%m')
                 cross['ds'] = pd.to_datetime(cross['periode'], format='%Y%m')
-
                 # Birleştirme
-                df_fc = pd.merge(main, cross[['ds','CROSS_SALES','CANCEL_5D','CANCEL_6_45D']], on='ds', how='left')
-                # Demografi regresörleri: global ortalama
+                df_fc = pd.merge(
+                    main, cross[['ds','CROSS_SALES','CANCEL_5D','CANCEL_6_45D']],
+                    on='ds', how='left'
+                )
+                # Demografi regresörleri
                 demo_mean = df_demo.mean(numeric_only=True)
                 for col in demo_mean.index:
                     df_fc[col] = demo_mean[col]
 
-                # Y ve regresörler
+                # Hazırlık
                 df_fc.rename(columns={'URUNADET':'y'}, inplace=True)
-                regressors = ['URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS',
-                              'CROSS_SALES','CANCEL_5D','CANCEL_6_45D'] + list(demo_mean.index)
+                regressors = [
+                    'URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS',
+                    'CROSS_SALES','CANCEL_5D','CANCEL_6_45D'
+                ] + list(demo_mean.index)
 
-                # Model oluşturma
-                m = Prophet()
-                for reg in regressors:
-                    m.add_regressor(reg)
-                m.fit(df_fc[['ds','y'] + regressors])
+                # Eğer yeterli veri yoksa son değeri kullan
+                if df_fc['y'].dropna().shape[0] < 2:
+                    pred_main = df_fc['y'].iloc[-1]
+                else:
+                    m = Prophet()
+                    for reg in regressors:
+                        m.add_regressor(reg)
+                    m.fit(df_fc[['ds','y'] + regressors])
+                    future = m.make_future_dataframe(periods=1, freq='M')
+                    last = df_fc.iloc[-1]
+                    for reg in regressors:
+                        future[reg] = last[reg]
+                    forecast = m.predict(future)
+                    pred_main = forecast.loc[
+                        forecast['ds']==pd.to_datetime('2023-01-31'),'yhat'
+                    ].iloc[0]
 
-                # Gelecek dönemi tahminleme
-                future = m.make_future_dataframe(periods=1, freq='M')
-                last = df_fc.iloc[-1]
-                for reg in regressors:
-                    future[reg] = last[reg]
-                forecast = m.predict(future)
-
-                # Son tahmin değerleri
-                pred_main = forecast.loc[forecast['ds']==pd.to_datetime('2023-01-31'),'yhat'].iloc[0]
-                # Çapraz ayrı tahmin değil, CROSS_SALES regressor etkilenmeyecek
-                results.append({'Kanal':kanal, 'Tahmin (Adet)':round(pred_main)})
+                results.append({'Kanal':kanal, 'Tahmin (Adet)': round(pred_main)})
 
             df_res = pd.DataFrame(results)
             st.table(df_res)
