@@ -48,7 +48,7 @@ if excel_file:
         st.write(df_demo.describe())
 
     with tab2:
-        st.subheader("Aylık Toplam Satış Adedi ve Tutarı")
+        st.subheader("Aylık Toplam Satış Adedi")
         df_time = df_sales.groupby('YEARMONTH')[['URUNADET', 'URUNHACIM']].sum().reset_index()
         fig_time = px.line(
             df_time,
@@ -56,6 +56,7 @@ if excel_file:
             y=['URUNADET'],
             title='Zaman Serisi Analizi - Adet'
 )
+        st.subheader("Aylık Toplam Satış Tutarı")
         fig_time2 = px.line(
             df_time,
             x='YEARMONTH',
