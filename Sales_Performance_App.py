@@ -5,6 +5,8 @@ import plotly.express as px
 from prophet import Prophet
 from prophet.plot import plot_plotly
 from pptx import Presentation
+import requests
+import json
 
 # --- Sayfa Yapılandırma ---
 st.set_page_config(
@@ -22,7 +24,7 @@ if excel_file:
     # Veri Yükleme
     df_sales = pd.read_excel(excel_file, sheet_name="SATIŞ")
     df_cross = pd.read_excel(excel_file, sheet_name="ÇAPRAZ SATIŞ")
-    df_demo = pd.read_excel(excel_file, sheet_name="ILCE DEMOGRAFI")
+    df_demo = pd.read_excel(excel_file, sheet_name="ILCE DEMOGRAFİ")
 
     # Başlık
     st.title("Satış Analizi Dashboard")
@@ -52,8 +54,30 @@ if excel_file:
         fig1 = px.line(df_time, x='YEARMONTH', y=['URUNADET', 'URUNHACIM'], title='Zaman Serisi Analizi')
         st.plotly_chart(fig1, use_container_width=True)
 
-        st.subheader("Şube Performansı Haritası")
-        st.info("Harita gösterimi eklemek için demografi verisiyle birleşim yapılacak.")
+        st.subheader("Şube Performansı Haritası (İl Bazında)")
+        # Province mapping
+        dealer_city = df_cross[['DEALER_CODE', 'CITY']].drop_duplicates()
+        df_sales_map = df_sales.merge(dealer_city, on='DEALER_CODE', how='left')
+        df_city_sales = df_sales_map.groupby('CITY')['URUNADET'].sum().reset_index()
+
+        # GeoJSON of Turkish provinces
+        geojson_url = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/turkey-provinces.geojson'
+        geojson_data = requests.get(geojson_url).json()
+
+        fig_map = px.choropleth_mapbox(
+            df_city_sales,
+            geojson=geojson_data,
+            locations='CITY',
+            featureidkey='properties.name',
+            color='URUNADET',
+            mapbox_style='carto-positron',
+            zoom=5,
+            center={'lat': 38, 'lon': 35},
+            opacity=0.6,
+            labels={'URUNADET': 'Satış Adedi'},
+            title='İl Bazında Toplam Ürün1 Satış Adedi'
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
 
     # ----- Sekme 3: Tahmin & Rapor -----
     with tab3:
