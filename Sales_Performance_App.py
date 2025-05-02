@@ -25,6 +25,10 @@ if excel_file:
     df_cross = pd.read_excel(excel_file, sheet_name="ÇAPRAZ SATIŞ")
     df_demo = pd.read_excel(excel_file, sheet_name="ILCE DEMOGRAFI")
 
+    # Veri Önişleme
+    # Convert to datetime
+    df_sales['YEARMONTH'] = pd.to_datetime(df_sales['YEARMONTH'].astype(str), format='%Y%m')
+    df_cross['AY'] = pd.to_datetime(df_cross['AY'].astype(str), format='%Y%m')
     # Başlık
     st.title("Satış Analizi Dashboard")
     st.markdown("Bu uygulama 2021-2022 dönemine ait satış, çapraz satış ve demografi verilerini analiz eder.")
