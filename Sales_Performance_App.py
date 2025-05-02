@@ -30,7 +30,7 @@ if excel_file:
     df_sales['YEARMONTH'] = pd.to_datetime(df_sales['YEARMONTH'].astype(str), format='%Y%m')
     df_cross['AY'] = pd.to_datetime(df_cross['AY'].astype(str), format='%Y%m')
     # Başlık
-    st.title("Satış Analizi Dashboard deneme")
+    st.title("Satış Analizi Dashboard")
     st.markdown("Bu uygulama 2021-2022 dönemine ait satış, çapraz satış ve demografi verilerini analiz eder.")
 
     # Sekmeler oluştur
