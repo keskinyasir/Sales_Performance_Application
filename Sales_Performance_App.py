@@ -132,8 +132,9 @@ if excel_file:
             st.plotly_chart(fig_fc)
 
 
+            # 2023 yılının Ocak ayını filtrele
+            jan_forecast = forecast[(forecast['ds'].dt.year == 2023) & (forecast['ds'].dt.month == 1)]
 
-            jan_pred_row = forecast[forecast['ds'].dt.to_period('M') == '2023-01']
             if not jan_pred_row.empty:
                 jan_pred = jan_pred_row['yhat'].values[0]
                 st.write(f"2023-01 için öngörülen değer: {jan_pred:.2f}")
