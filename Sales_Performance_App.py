@@ -64,7 +64,9 @@ if excel_file:
         st.subheader("Şube Performansı Haritası (İl Bazında)")
         # Dealer -> City ilişkilendirme
         dealer_city = df_cross[['DEALER_CODE', 'CITY']].drop_duplicates()
-        df_sales_map = df_sales.merge(dealer_city, on='DEALER_CODE', how='left')
+        dealer_city = dealer_city.dropna()
+        dealer_city['DEALER_CODE'] = dealer_city['DEALER_CODE'] // 10
+        df_sales_map = pd.merge(df_sales,dealer_city, on='DEALER_CODE', how='inner')
         df_city_sales = df_sales_map.groupby('CITY')['URUNADET'].sum().reset_index()
 
         # GeoJSON yükleme
