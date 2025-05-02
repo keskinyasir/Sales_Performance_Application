@@ -32,7 +32,6 @@ if excel_file:
     # --- Sekmeler ---
     tab1, tab2, tab3 = st.tabs(["Veri Önizleme", "EDA & Görselleştirme", "Tahmin & Rapor"])
 
-    # ----- Sekme 1: Veri Önizleme -----
     with tab1:
         st.subheader("1. Ürün1 Satış Verisi")
         st.dataframe(df_sales.head(10))
@@ -46,58 +45,63 @@ if excel_file:
         st.dataframe(df_demo.head(10))
         st.write(df_demo.describe())
 
-    # ----- Sekme 2: EDA & Görselleştirme -----
     with tab2:
         st.subheader("Aylık Toplam Satış Adedi ve Tutarı")
         df_time = df_sales.groupby('YEARMONTH')[['URUNADET', 'URUNHACIM']].sum().reset_index()
-        fig1 = px.line(
+        fig_time = px.line(
             df_time,
             x='YEARMONTH',
             y=['URUNADET', 'URUNHACIM'],
             title='Zaman Serisi Analizi',
             labels={'value': 'Değer', 'variable': 'Metrik'}
         )
-        st.plotly_chart(fig1, use_container_width=True)
+        st.plotly_chart(fig_time, use_container_width=True)
 
         st.subheader("Şube Performansı Haritası (İl Bazında)")
-        # Şube ile şehir eşleştirme
         dealer_city = df_cross[['DEALER_CODE', 'CITY']].drop_duplicates()
         df_sales_map = df_sales.merge(dealer_city, on='DEALER_CODE', how='left')
         df_city_sales = df_sales_map.groupby('CITY')['URUNADET'].sum().reset_index()
 
-        # GeoJSON: tr-cities.json dosyası proje kökünde olmalıdır
+        # GeoJSON yükleme
         try:
             with open('tr-cities.json', 'r', encoding='utf-8') as f:
                 geojson_data = json.load(f)
         except FileNotFoundError:
-            st.error("GeoJSON dosyası bulunamadı. 'tr-cities.json' dosyasını proje köküne ekleyin.")
+            st.error("GeoJSON dosyası bulunamadı. 'tr-cities.json' dosyasını ekleyin.")
             st.stop()
 
-        # Choropleth harita oluşturma
+        # İnteraktif Choropleth Mapbox
         fig_map = px.choropleth_mapbox(
             df_city_sales,
             geojson=geojson_data,
             locations='CITY',
             featureidkey='properties.name',
             color='URUNADET',
+            color_continuous_scale='Viridis',
             mapbox_style='carto-positron',
             zoom=5,
             center={'lat': 38, 'lon': 35},
             opacity=0.6,
-            labels={'URUNADET': 'Satış Adedi'},
-            title='İl Bazında Toplam Ürün1 Satış Adedi',
             hover_name='CITY',
-            hover_data={'URUNADET': True}
+            hover_data={'URUNADET': True},
+            labels={'URUNADET': 'Satış Adedi'}
         )
-        st.plotly_chart(fig_map, use_container_width=True)
+        st.plotly_chart(
+            fig_map,
+            use_container_width=True,
+            config={
+                'displayModeBar': True,
+                'scrollZoom': True,
+                'modeBarButtonsToAdd': ['toggleHover'],
+                'toImageButtonOptions': {'format': 'png'}
+            }
+        )
 
-    # ----- Sekme 3: Tahmin & Rapor -----
     with tab3:
         st.subheader("2023 Ocak Tahmini")
         product = st.selectbox("Tahmin için ürün seçin", ["Ürün1", "Ürün2"])
         channel = st.multiselect("Kanal seçin", df_cross['KANAL'].unique())
         if st.button("Tahmini Hesapla"):
-            # Forecast veri hazırlığı
             if product == "Ürün1":
                 df_fc = df_sales.groupby('YEARMONTH')['URUNADET'].sum().reset_index()
                 df_fc.columns = ['ds', 'y']
@@ -106,7 +110,7 @@ if excel_file:
                 df_fc.columns = ['ds', 'y']
 
             df_fc['ds'] = pd.to_datetime(df_fc['ds'], format='%Y%m')
-            m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+            m = Prophet(yearly_seasonality=True)
             m.fit(df_fc)
             future = m.make_future_dataframe(periods=1, freq='M')
             forecast = m.predict(future)
@@ -122,9 +126,7 @@ if excel_file:
         if st.button("PowerPoint Oluştur ve İndir"):
             prs = Presentation()
             slide = prs.slides.add_slide(prs.slide_layouts[5])
-            title = slide.shapes.title
-            title.text = "Satış Analizi Özet"
-
+            slide.shapes.title.text = "Satış Analizi Özet"
             prs.save("sales_report.pptx")
             with open("sales_report.pptx", "rb") as f:
                 st.download_button("PowerPoint İndir", f, file_name="sales_analysis.pptx")
