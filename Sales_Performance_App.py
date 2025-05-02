@@ -26,7 +26,7 @@ if excel_file:
     df_demo = pd.read_excel(excel_file, sheet_name="ILCE DEMOGRAFI")
 
     # Veri Önişleme
-    # Convert to datetime
+    # Tarih formatı düzeltmesi
     df_sales['YEARMONTH'] = pd.to_datetime(df_sales['YEARMONTH'].astype(str), format='%Y%m')
     df_cross['AY'] = pd.to_datetime(df_cross['AY'].astype(str), format='%Y%m')
     # Başlık
