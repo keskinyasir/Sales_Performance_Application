@@ -53,7 +53,7 @@ if excel_file:
     # -------- EDA & GÖRSELLEŞTİRME --------
     with tab2:
         # Zaman Serisi
-        st.subheader("Aylık Toplam Satış Adedi ve Tutarı")
+        st.subheader("Aylık Toplam Satış Adedi")
         df_time = df_sales.groupby('YEARMONTH')[['URUNADET', 'URUNHACIM']].sum().reset_index()
         fig_time = px.line(
             df_time,
@@ -63,7 +63,7 @@ if excel_file:
         )
         st.plotly_chart(fig_time, use_container_width=True)
 
-        
+        st.subheader("Aylık Toplam Satış Hacmi")
         fig_time2 = px.line(
             df_time,
             x='YEARMONTH',
