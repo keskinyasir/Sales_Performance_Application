@@ -30,7 +30,7 @@ if excel_file:
 
     # Veri önişleme
     # Convert to datetime
-    df['YEARMONTH'] = pd.to_datetime(df['YEARMONTH'].astype(str), format='%Y%m')
+    df_sales['YEARMONTH'] = pd.to_datetime(df_sales['YEARMONTH'].astype(str), format='%Y%m')
 
     # Başlık
     st.title("Satış Analizi Dashboard")
