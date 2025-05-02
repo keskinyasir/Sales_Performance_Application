@@ -29,10 +29,10 @@ if excel_file:
     st.title("Satış Analizi Dashboard")
     st.markdown("Bu uygulama 2021-2022 dönemine ait satış, çapraz satış ve demografi verilerini analiz eder.")
 
-    # --- Sekmeler ---
+    # Sekmeler oluştur
     tab1, tab2, tab3 = st.tabs(["Veri Önizleme", "EDA & Görselleştirme", "Tahmin & Rapor"])
 
-    # ----- Sekme 1: Veri Önizleme -----
+    # -------- VERİ ÖNİZLEME --------
     with tab1:
         st.subheader("1. Ürün1 Satış Verisi")
         st.dataframe(df_sales.head(10))
@@ -46,9 +46,9 @@ if excel_file:
         st.dataframe(df_demo.head(10))
         st.write(df_demo.describe())
 
-    # ----- Sekme 2: EDA & Görselleştirme -----
+    # -------- EDA & GÖRSELLEŞTİRME --------
     with tab2:
-        # Zaman Serisi Grafiği
+        # Zaman Serisi
         st.subheader("Aylık Toplam Satış Adedi ve Tutarı")
         df_time = df_sales.groupby('YEARMONTH')[['URUNADET', 'URUNHACIM']].sum().reset_index()
         fig_time = px.line(
@@ -60,45 +60,65 @@ if excel_file:
         )
         st.plotly_chart(fig_time, use_container_width=True)
 
-        # İl Bazında Harita
+        # İl Bazlı Harita (Scatter Mapbox)
         st.subheader("Şube Performansı Haritası (İl Bazında)")
+        # Dealer -> City ilişkilendirme
         dealer_city = df_cross[['DEALER_CODE', 'CITY']].drop_duplicates()
         df_sales_map = df_sales.merge(dealer_city, on='DEALER_CODE', how='left')
         df_city_sales = df_sales_map.groupby('CITY')['URUNADET'].sum().reset_index()
 
-        # GeoJSON Yükleme
+        # GeoJSON yükleme
         try:
             with open('tr-cities.json', 'r', encoding='utf-8') as f:
                 geojson_data = json.load(f)
         except FileNotFoundError:
-            st.error("GeoJSON dosyası bulunamadı. 'tr-cities.json' dosyasını ekleyin.")
+            st.error("GeoJSON dosyası bulunamadı. 'tr-cities.json' ekleyin.")
             st.stop()
 
-        # Choropleth Oluşturma
-        fig_map = px.choropleth(
-            df_city_sales,
-            geojson=geojson_data,
-            locations='CITY',
-            featureidkey='properties.name',
-            color='URUNADET',
-            color_continuous_scale='Viridis',
-            labels={'URUNADET': 'Satış Adedi'},
-            hover_name='CITY',
-            hover_data={'URUNADET': True}
-        )
-        fig_map.update_geos(fitbounds="locations", visible=False)
-        fig_map.update_layout(
-            title_text='İl Bazında Toplam Ürün1 Satış Adedi',
-            margin={'r':0,'t':30,'l':0,'b':0}
-        )
-        st.plotly_chart(fig_map, use_container_width=True, config={'scrollZoom': True})
+        # Her ilin centroid koordinatını hesapla
+        centroids = {}
+        for feat in geojson_data['features']:
+            name = feat['properties']['name']
+            coords = []
+            geom = feat['geometry']
+            if geom['type'] == 'Polygon':
+                rings = geom['coordinates']
+            else:
+                rings = [ring for poly in geom['coordinates'] for ring in poly]
+            for ring in rings:
+                coords.extend(ring)
+            lons = [c[0] for c in coords]
+            lats = [c[1] for c in coords]
+            if lats and lons:
+                centroids[name] = {'lat': sum(lats)/len(lats), 'lon': sum(lons)/len(lons)}
 
-    # ----- Sekme 3: Tahmin & Rapor -----
+        # Koordinatları data frame'e ekle
+        df_city_sales['lat'] = df_city_sales['CITY'].map(lambda x: centroids.get(x, {}).get('lat', 38))
+        df_city_sales['lon'] = df_city_sales['CITY'].map(lambda x: centroids.get(x, {}).get('lon', 35))
+
+        # Scatter Mapbox
+        fig_map = px.scatter_mapbox(
+            df_city_sales,
+            lat='lat',
+            lon='lon',
+            size='URUNADET',
+            color='URUNADET',
+            hover_name='CITY',
+            hover_data={'URUNADET': True},
+            size_max=40,
+            zoom=5,
+            mapbox_style='open-street-map',
+            title='İl Bazında Toplam Ürün1 Satış Adedi'
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
+
+    # -------- TAHMİN & RAPOR --------
     with tab3:
         st.subheader("2023 Ocak Tahmini")
         product = st.selectbox("Tahmin için ürün seçin", ["Ürün1", "Ürün2"])
         channel = st.multiselect("Kanal seçin", df_cross['KANAL'].unique())
         if st.button("Tahmini Hesapla"):
+            # Veri hazırlığı
             if product == "Ürün1":
                 df_fc = df_sales.groupby('YEARMONTH')['URUNADET'].sum().reset_index()
                 df_fc.columns = ['ds', 'y']
@@ -106,15 +126,20 @@ if excel_file:
                 df_fc = df_cross.groupby('AY')['ÇAPRAZ ÜRÜN ADET'].sum().reset_index()
                 df_fc.columns = ['ds', 'y']
             df_fc['ds'] = pd.to_datetime(df_fc['ds'], format='%Y%m')
+
+            # Model eğitimi ve tahmin
             model = Prophet(yearly_seasonality=True)
             model.fit(df_fc)
             future = model.make_future_dataframe(periods=1, freq='M')
             forecast = model.predict(future)
+
+            # Gösterimler
             fig_fc = plot_plotly(model, forecast)
             st.plotly_chart(fig_fc, use_container_width=True)
-            pred = forecast.loc[forecast['ds']==pd.to_datetime('2023-01-31'), 'yhat'].values[0]
+            pred = forecast.loc[forecast['ds'] == pd.to_datetime('2023-01-31'), 'yhat'].values[0]
             st.write(f"2023-01 için öngörülen değer: {pred:.2f}")
 
+        # Rapor indirme
         st.markdown("---")
         st.subheader("Rapor İndir")
         if st.button("PowerPoint Oluştur ve İndir"):
