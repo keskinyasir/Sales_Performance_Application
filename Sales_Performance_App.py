@@ -27,6 +27,11 @@ if excel_file:
     df_cross = pd.read_excel(excel_file, sheet_name="ÇAPRAZ SATIŞ")
     df_demo = pd.read_excel(excel_file, sheet_name="ILCE DEMOGRAFI")
 
+
+    # Veri önişleme
+    # Convert to datetime
+    df['YEARMONTH'] = pd.to_datetime(df['YEARMONTH'].astype(str), format='%Y%m')
+
     # Başlık
     st.title("Satış Analizi Dashboard")
     st.markdown("Bu uygulama 2021-2022 dönemine ait satış, çapraz satış ve demografi verilerini analiz eder.")
@@ -126,8 +131,14 @@ if excel_file:
             fig_fc = plot_plotly(m_prophet, forecast)
             st.plotly_chart(fig_fc)
 
-            jan_pred = forecast.loc[forecast['ds'] == pd.to_datetime('2023-01-31'), 'yhat'].values[0]
-            st.write(f"2023-01 için öngörülen değer: {jan_pred:.2f}")
+
+
+            jan_pred_row = forecast[forecast['ds'].dt.to_period('M') == '2023-01']
+            if not jan_pred_row.empty:
+                jan_pred = jan_pred_row['yhat'].values[0]
+                st.write(f"2023-01 için öngörülen değer: {jan_pred:.2f}")
+            else:
+                st.warning("Ocak 2023 tahmini bulunamadı.")
 
         st.markdown("---")
         st.subheader("Rapor İndir")
