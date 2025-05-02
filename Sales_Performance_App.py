@@ -58,11 +58,20 @@ if excel_file:
         fig_time = px.line(
             df_time,
             x='YEARMONTH',
-            y=['URUNADET', 'URUNHACIM'],
-            title='Zaman Serisi Analizi',
-            labels={'value': 'Değer', 'variable': 'Metrik'}
+            y=['URUNADET'],
+            title='Zaman Serisi Analizi - Adet'
         )
         st.plotly_chart(fig_time, use_container_width=True)
+
+        
+        fig_time2 = px.line(
+            df_time,
+            x='YEARMONTH',
+            y=['URUNHACIM'],
+            title='Zaman Serisi Analizi - Hacim'
+        )
+        st.plotly_chart(fig_time2, use_container_width=True)
+
 
         # İl Bazlı Harita (Scatter Mapbox)
         st.subheader("Şube Performansı Haritası (İl Bazında)")
