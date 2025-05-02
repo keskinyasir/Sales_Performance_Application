@@ -50,7 +50,13 @@ if excel_file:
     with tab2:
         st.subheader("Aylık Toplam Satış Adedi ve Tutarı")
         df_time = df_sales.groupby('YEARMONTH')[['URUNADET', 'URUNHACIM']].sum().reset_index()
-        fig1 = px.line(df_time, x='YEARMONTH', y=['URUNADET', 'URUNHACIM'], title='Zaman Serisi Analizi')
+        fig1 = px.line(
+            df_time,
+            x='YEARMONTH',
+            y=['URUNADET', 'URUNHACIM'],
+            title='Zaman Serisi Analizi',
+            labels={'value': 'Değer', 'variable': 'Metrik'}
+        )
         st.plotly_chart(fig1, use_container_width=True)
 
         st.subheader("Şube Performansı Haritası (İl Bazında)")
@@ -67,6 +73,7 @@ if excel_file:
             st.error("GeoJSON dosyası bulunamadı. 'tr-cities.json' dosyasını proje köküne ekleyin.")
             st.stop()
 
+        # Choropleth harita oluşturma ve etkileşim
         fig_map = px.choropleth_mapbox(
             df_city_sales,
             geojson=geojson_data,
@@ -78,7 +85,15 @@ if excel_file:
             center={'lat': 38, 'lon': 35},
             opacity=0.6,
             labels={'URUNADET': 'Satış Adedi'},
-            title='İl Bazında Toplam Ürün1 Satış Adedi'
+            title='İl Bazında Toplam Ürün1 Satış Adedi',
+            hover_data={'SATIS_ADEDI': df_city_sales['URUNADET']},
+            hover_name='CITY'
+        )
+        # Satış adetlerini harita üzerinde metin olarak göster
+        fig_map.update_traces(
+            text=df_city_sales['URUNADET'],
+            textposition='top center',
+            hovertemplate='<b>%{hovertext}</b><br>Satış Adedi: %{z}<extra></extra>'
         )
         st.plotly_chart(fig_map, use_container_width=True)
 
