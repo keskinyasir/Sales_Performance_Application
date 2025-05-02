@@ -5,3 +5,4 @@ plotly>=5.0.0
 python-pptx>=1.0.2
 openpyxl>=3.0.0
 pillow>=11.2.1
+folium>=0.19.5
