@@ -130,41 +130,37 @@ if excel_file:
     # -------- TAHMİN & RAPOR --------
     with tab3:
         st.subheader("Tahminleme (Prophet + Regresörler)")
-        product = st.selectbox("Ürün seçin", ["Ürün1","Ürün2"])
+        product = st.selectbox("Ürün seçin", ["Ürün1", "Ürün2"])
         channel = st.multiselect("Kanal (Ürün2 için)", df_cross['KANAL'].unique())
         if st.button("Tahmini Hesapla"):
+            # Ürün bazlı hazırlık
             if product == "Ürün1":
-                df_fc = df_sales.groupby('YEARMONTH').agg({
-                    'URUNADET':'sum',
-                    'URUNHACIM':'sum',
-                    'ABONE_YAS_0_3AY':'sum',
-                    'ABONE_YAS_4_12AY':'sum',
-                    'ABONE_YAS_1_3YAS':'sum',
-                    'ABONE_YAS_3_YAS':'sum'
-                }).reset_index()
-                df_fc.columns = ['YEARMONTH','y','URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS']
-                df_fc['ds'] = pd.to_datetime(df_fc['YEARMONTH'], format='%Y%m')
+                df_fc = df_sales.groupby('YEARMONTH')[['URUNADET','URUNHACIM',
+                                                      'ABONE_YAS_0_3AY','ABONE_YAS_4_12AY',
+                                                      'ABONE_YAS_1_3YAS','ABONE_YAS_3_YAS']].sum().reset_index()
+                df_fc.columns = ['periode','y','URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS']
+                df_fc['ds'] = pd.to_datetime(df_fc['periode'], format='%Y%m')
                 regressors = ['URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS']
             else:
                 df_temp = df_cross.copy()
                 if channel:
                     df_temp = df_temp[df_temp['KANAL'].isin(channel)]
-                df_fc = df_temp.groupby('AY').agg({
-                    'ÇAPRAZ ÜRÜN ADET':'sum',
-                    '5GUNIPTAL':'sum',
-                    '6-45GUNIPTAL':'sum'
-                }).reset_index()
-                df_fc.columns = ['AY','y','CROSS_SALES','CANCEL_5D','CANCEL_6_45D']
-                df_fc['ds'] = pd.to_datetime(df_fc['AY'], format='%Y%m')
+                # Dict yerine liste ile sum
+                df_fc = df_temp.groupby('AY')[[
+                    'ÇAPRAZ ÜRÜN ADET','5GUNIPTAL','6-45GUNIPTAL'
+                ]].sum().reset_index()
+                df_fc.columns = ['periode','y','CROSS_SALES','CANCEL_5D','CANCEL_6_45D']
+                df_fc['ds'] = pd.to_datetime(df_fc['periode'], format='%Y%m')
                 regressors = ['CROSS_SALES','CANCEL_5D','CANCEL_6_45D']
 
+            # Prophet modeli
             m = Prophet()
             for reg in regressors:
                 m.add_regressor(reg)
             m.fit(df_fc[['ds','y'] + regressors])
 
+            # Gelecek veri çerçevesi ve regresör değerleri
             future = m.make_future_dataframe(periods=1, freq='M')
-            # gelecek dönem için regresör değerleri: son bilinen değerler
             last = df_fc.iloc[-1]
             for reg in regressors:
                 future[reg] = last[reg]
@@ -173,8 +169,8 @@ if excel_file:
             fig_fc = plot_plotly(m, forecast)
             st.plotly_chart(fig_fc, use_container_width=True)
 
-            pred_val = forecast.loc[forecast['ds']==pd.to_datetime('2023-01-31'),'yhat'].values[0]
-            st.write(f"2023 Ocak için öngörülen satış adedi: {pred_val:.0f}")
+            pred_val = forecast.loc[forecast['ds']==forecast['ds'].max(), 'yhat'].iloc[0]
+            st.write(f"Tahminlenen değer (son dönem): {pred_val:.0f}")
 
 
         # Rapor indirme
