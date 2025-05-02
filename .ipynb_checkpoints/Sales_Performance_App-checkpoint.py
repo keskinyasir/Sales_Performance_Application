@@ -53,18 +53,11 @@ if excel_file:
         fig_time = px.line(
             df_time,
             x='YEARMONTH',
-            y=['URUNADET'],
-            title='Zaman Serisi Analizi - Adet'
-)
-        fig_time2 = px.line(
-            df_time,
-            x='YEARMONTH',
-            y=['URUNHACIM'],
-            title='Zaman Serisi Analizi - Hacim'
-)
-
+            y=['URUNADET', 'URUNHACIM'],
+            title='Zaman Serisi Analizi',
+            labels={'value': 'Değer', 'variable': 'Metrik'}
+        )
         st.plotly_chart(fig_time, use_container_width=True)
-        st.plotly_chart(fig_time2, use_container_width=True)
 
         st.subheader("Şube Performansı Haritası (Folium ile)")
         dealer_city = df_cross[['DEALER_CODE', 'CITY']].drop_duplicates()
