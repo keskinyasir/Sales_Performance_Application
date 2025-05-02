@@ -73,7 +73,7 @@ if excel_file:
             st.error("GeoJSON dosyası bulunamadı. 'tr-cities.json' dosyasını proje köküne ekleyin.")
             st.stop()
 
-        # Choropleth harita oluşturma ve etkileşim
+        # Choropleth harita oluşturma
         fig_map = px.choropleth_mapbox(
             df_city_sales,
             geojson=geojson_data,
@@ -86,14 +86,8 @@ if excel_file:
             opacity=0.6,
             labels={'URUNADET': 'Satış Adedi'},
             title='İl Bazında Toplam Ürün1 Satış Adedi',
-            hover_data={'SATIS_ADEDI': df_city_sales['URUNADET']},
-            hover_name='CITY'
-        )
-        # Satış adetlerini harita üzerinde metin olarak göster
-        fig_map.update_traces(
-            text=df_city_sales['URUNADET'],
-            textposition='top center',
-            hovertemplate='<b>%{hovertext}</b><br>Satış Adedi: %{z}<extra></extra>'
+            hover_name='CITY',
+            hover_data={'URUNADET': True}
         )
         st.plotly_chart(fig_map, use_container_width=True)
 
