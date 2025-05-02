@@ -56,6 +56,8 @@ if excel_file:
             y=['URUNADET'],
             title='Zaman Serisi Analizi - Adet'
 )
+        st.plotly_chart(fig_time, use_container_width=True)
+
         st.subheader("Aylık Toplam Satış Tutarı")
         fig_time2 = px.line(
             df_time,
@@ -64,7 +66,7 @@ if excel_file:
             title='Zaman Serisi Analizi - Hacim'
 )
 
-        st.plotly_chart(fig_time, use_container_width=True)
+        
         st.plotly_chart(fig_time2, use_container_width=True)
 
         st.subheader("Şube Performansı Haritası (Folium ile)")
