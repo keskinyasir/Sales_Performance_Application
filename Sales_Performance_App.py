@@ -135,8 +135,8 @@ if excel_file:
             # 2023 yılının Ocak ayını filtrele
             jan_forecast = forecast[(forecast['ds'].dt.year == 2023) & (forecast['ds'].dt.month == 1)]
 
-            if not jan_pred_row.empty:
-                jan_pred = jan_pred_row['yhat'].values[0]
+            if not jan_forecast.empty:
+                jan_pred = jan_forecast['yhat'].values[0]
                 st.write(f"2023-01 için öngörülen değer: {jan_pred:.2f}")
             else:
                 st.warning("Ocak 2023 tahmini bulunamadı.")
