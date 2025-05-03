@@ -68,6 +68,7 @@ if excel_file:
     # -------- TAHMİN & RAPOR --------
     with tab3:
         st.subheader("Tahminleme (Prophet + Tüm Regresörler)")
+        # Forecast butonunda hesaplama ve saklama
         if st.button("Tahmini Hesapla"):
             # 1) Aylık satış
             monthly_sales = df_sales.groupby('YEARMONTH').agg({
@@ -86,79 +87,86 @@ if excel_file:
             cross_month['ds'] = pd.to_datetime(cross_month['periode_cross'], format='%Y%m')
 
             # 3) Demografi sabit
-            demo_agg = df_demo.groupby('IL').mean(numeric_only=True)
-            demo_global = demo_agg.mean().to_dict()
+            demo_mean = df_demo.groupby('IL').mean(numeric_only=True).mean().to_dict()
 
-            # 4) Birleştir
-            df_fc = pd.merge(monthly_sales, cross_month[['ds','cross_sales','cancel_5d','cancel_6_45d']], on='ds', how='left')
-            for k,v in demo_global.items(): df_fc[k] = v
+            # 4) Birleştir ve regresör ekle
+            df_fc = pd.merge(monthly_sales,
+                             cross_month[['ds','cross_sales','cancel_5d','cancel_6_45d']],
+                             on='ds', how='left')
+            for k,v in demo_mean.items(): df_fc[k] = v
 
-            # Regresörler
-            regressors = ['URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS','cross_sales','cancel_5d','cancel_6_45d'] + list(demo_global.keys())
+            regressors = ['URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS',
+                          'cross_sales','cancel_5d','cancel_6_45d'] + list(demo_mean.keys())
 
             # Prophet modeli
             m = Prophet()
             for reg in regressors: m.add_regressor(reg)
             m.fit(df_fc[['ds','y'] + regressors])
 
-            # Gelecek
+            # Gelecek tahmin
             future = m.make_future_dataframe(periods=1, freq='M')
             last = df_fc.iloc[-1]
             for reg in regressors: future[reg] = last[reg]
             forecast = m.predict(future)
 
-            # Görsel ve çıktı
-            fig_pred = plot_plotly(m, forecast)
-            st.plotly_chart(fig_pred, use_container_width=True)
+            # Sonuçları göster ve kaydet
+            st.plotly_chart(plot_plotly(m, forecast), use_container_width=True)
             next_pred = forecast.loc[forecast['ds']==forecast['ds'].max(),'yhat'].iloc[0]
             st.write(f"2023 Ocak öngörülen satış adedi: {next_pred:.0f}")
+
+            # State'e kaydet
+            st.session_state['forecast_df'] = forecast
 
         # ------------ Rapor İndir ------------
         st.markdown("---")
         st.subheader("Rapor İndir")
         if st.button("PowerPoint Oluştur ve İndir"):
-            prs = Presentation()
-            # Slide 1: Ürün1 Satış
-            slide1 = prs.slides.add_slide(prs.slide_layouts[5])
-            slide1.shapes.title.text = "Ürün1 Satış Verisi"
-            tbl1 = df_sales.head(10)
-            rows1, cols1 = tbl1.shape
-            tbl = slide1.shapes.add_table(rows1+1, cols1, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
-            for i, col in enumerate(tbl1.columns): tbl.cell(0,i).text = str(col)
-            for r_idx, (_, row) in enumerate(tbl1.iterrows(), start=1):
-                for c_idx, val in enumerate(row): tbl.cell(r_idx,c_idx).text = str(val)
+            if 'forecast_df' not in st.session_state:
+                st.error("Önce 'Tahmini Hesapla' butonuna tıklayın.")
+            else:
+                prs = Presentation()
+                # Slide 1: Ürün1 Satış
+                slide1 = prs.slides.add_slide(prs.slide_layouts[5])
+                slide1.shapes.title.text = "Ürün1 Satış Verisi"
+                tbl1 = df_sales.head(10)
+                rows1, cols1 = tbl1.shape
+                table1 = slide1.shapes.add_table(rows1+1, cols1, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
+                for i, col in enumerate(tbl1.columns): table1.cell(0,i).text = str(col)
+                for r_idx, (_, row) in enumerate(tbl1.iterrows(), start=1):
+                    for c_idx, val in enumerate(row): table1.cell(r_idx,c_idx).text = str(val)
 
-            # Slide 2: Ürün2 Çapraz Satış
-            slide2 = prs.slides.add_slide(prs.slide_layouts[5])
-            slide2.shapes.title.text = "Ürün2 Çapraz Satış Verisi"
-            tbl2 = df_cross.head(10)
-            rows2, cols2 = tbl2.shape
-            tbl = slide2.shapes.add_table(rows2+1, cols2, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
-            for i, col in enumerate(tbl2.columns): tbl.cell(0,i).text = str(col)
-            for r_idx, (_, row) in enumerate(tbl2.iterrows(), start=1):
-                for c_idx, val in enumerate(row): tbl.cell(r_idx,c_idx).text = str(val)
+                # Slide 2: Ürün2 Çapraz Satış
+                slide2 = prs.slides.add_slide(prs.slide_layouts[5])
+                slide2.shapes.title.text = "Ürün2 Çapraz Satış Verisi"
+                tbl2 = df_cross.head(10)
+                rows2, cols2 = tbl2.shape
+                table2 = slide2.shapes.add_table(rows2+1, cols2, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
+                for i, col in enumerate(tbl2.columns): table2.cell(0,i).text = str(col)
+                for r_idx, (_, row) in enumerate(tbl2.iterrows(), start=1):
+                    for c_idx, val in enumerate(row): table2.cell(r_idx,c_idx).text = str(val)
 
-            # Slide 3: Demografi
-            slide3 = prs.slides.add_slide(prs.slide_layouts[5])
-            slide3.shapes.title.text = "Demografi Verisi"
-            tbl3 = df_demo.head(10)
-            rows3, cols3 = tbl3.shape
-            tbl = slide3.shapes.add_table(rows3+1, cols3, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
-            for i, col in enumerate(tbl3.columns): tbl.cell(0,i).text = str(col)
-            for r_idx, (_, row) in enumerate(tbl3.iterrows(), start=1):
-                for c_idx, val in enumerate(row): tbl.cell(r_idx,c_idx).text = str(val)
+                # Slide 3: Demografi
+                slide3 = prs.slides.add_slide(prs.slide_layouts[5])
+                slide3.shapes.title.text = "Demografi Verisi"
+                tbl3 = df_demo.head(10)
+                rows3, cols3 = tbl3.shape
+                table3 = slide3.shapes.add_table(rows3+1, cols3, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
+                for i, col in enumerate(tbl3.columns): table3.cell(0,i).text = str(col)
+                for r_idx, (_, row) in enumerate(tbl3.iterrows(), start=1):
+                    for c_idx, val in enumerate(row): table3.cell(r_idx,c_idx).text = str(val)
 
-            # Slide 4: Tahmin
-            slide4 = prs.slides.add_slide(prs.slide_layouts[5])
-            slide4.shapes.title.text = "2023 Ocak Öngörü"
-            df_res = forecast[['ds','yhat']].tail(1)
-            rows4, cols4 = df_res.shape
-            tbl = slide4.shapes.add_table(rows4+1, cols4, Inches(0.5), Inches(1.5), Inches(6), Inches(2)).table
-            for i, col in enumerate(df_res.columns): tbl.cell(0,i).text = str(col)
-            for r_idx, (_, row) in enumerate(df_res.iterrows(), start=1):
-                for c_idx, val in enumerate(row): tbl.cell(r_idx,c_idx).text = str(val)
+                # Slide 4: Tahmin
+                slide4 = prs.slides.add_slide(prs.slide_layouts[5])
+                slide4.shapes.title.text = "2023 Ocak Öngörü"
+                forecast = st.session_state['forecast_df']
+                df_res = forecast[['ds','yhat']].tail(1)
+                rows4, cols4 = df_res.shape
+                table4 = slide4.shapes.add_table(rows4+1, cols4, Inches(0.5), Inches(1.5), Inches(6), Inches(2)).table
+                for i, col in enumerate(df_res.columns): table4.cell(0,i).text = str(col)
+                for r_idx, (_, row) in enumerate(df_res.iterrows(), start=1):
+                    for c_idx, val in enumerate(row): table4.cell(r_idx,c_idx).text = str(val)
 
-            # Kaydet ve indir
-            prs.save("sales_report.pptx")
-            with open("sales_report.pptx","rb") as f:
-                st.download_button("PowerPoint İndir", f, file_name="sales_analysis.pptx")
+                # Kaydet ve indir
+                prs.save("sales_report.pptx")
+                with open("sales_report.pptx","rb") as f:
+                    st.download_button("PowerPoint İndir", f, file_name="sales_analysis.pptx")
