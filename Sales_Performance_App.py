@@ -128,7 +128,7 @@ if excel_file:
                 # Slide 1: Ürün1 Satış
                 slide1 = prs.slides.add_slide(prs.slide_layouts[5])
                 slide1.shapes.title.text = "Ürün1 Satış Verisi"
-                tbl1 = df_sales.head(10)
+                tbl1 = df_sales.head(3)
                 rows1, cols1 = tbl1.shape
                 table1 = slide1.shapes.add_table(rows1+1, cols1, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
                 for i, col in enumerate(tbl1.columns): table1.cell(0,i).text = str(col)
@@ -138,7 +138,7 @@ if excel_file:
                 # Slide 2: Ürün2 Çapraz Satış
                 slide2 = prs.slides.add_slide(prs.slide_layouts[5])
                 slide2.shapes.title.text = "Ürün2 Çapraz Satış Verisi"
-                tbl2 = df_cross.head(10)
+                tbl2 = df_cross.head(3)
                 rows2, cols2 = tbl2.shape
                 table2 = slide2.shapes.add_table(rows2+1, cols2, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
                 for i, col in enumerate(tbl2.columns): table2.cell(0,i).text = str(col)
@@ -148,7 +148,7 @@ if excel_file:
                 # Slide 3: Demografi
                 slide3 = prs.slides.add_slide(prs.slide_layouts[5])
                 slide3.shapes.title.text = "Demografi Verisi"
-                tbl3 = df_demo.head(10)
+                tbl3 = df_demo.head(3)
                 rows3, cols3 = tbl3.shape
                 table3 = slide3.shapes.add_table(rows3+1, cols3, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
                 for i, col in enumerate(tbl3.columns): table3.cell(0,i).text = str(col)
