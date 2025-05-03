@@ -150,7 +150,7 @@ if excel_file:
                 slide3.shapes.title.text = "Demografi Verisi"
                 # Sadece ilk 7 kolona indirgenmiş tablo
                 cols_to_show = df_demo.columns[:7]
-                tbl3 = df_demo[cols_to_show].head(10)
+                tbl3 = df_demo[cols_to_show].head(3)
                 rows3, cols3 = tbl3.shape
                 table3 = slide3.shapes.add_table(rows3+1, cols3, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
                 for i, col in enumerate(cols_to_show):
