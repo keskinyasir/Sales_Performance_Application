@@ -145,15 +145,20 @@ if excel_file:
                 for r_idx, (_, row) in enumerate(tbl2.iterrows(), start=1):
                     for c_idx, val in enumerate(row): table2.cell(r_idx,c_idx).text = str(val)
 
-                # Slide 3: Demografi
+                # Slide 3: Demografi (Sadece ilk 7 kolon)
                 slide3 = prs.slides.add_slide(prs.slide_layouts[5])
                 slide3.shapes.title.text = "Demografi Verisi"
-                tbl3 = df_demo.head(3)
+                # Sadece ilk 7 kolona indirgenmiş tablo
+                cols_to_show = df_demo.columns[:7]
+                tbl3 = df_demo[cols_to_show].head(10)
                 rows3, cols3 = tbl3.shape
                 table3 = slide3.shapes.add_table(rows3+1, cols3, Inches(0.5), Inches(1.5), Inches(9), Inches(3)).table
-                for i, col in enumerate(tbl3.columns): table3.cell(0,i).text = str(col)
+                for i, col in enumerate(cols_to_show):
+                    table3.cell(0, i).text = str(col)
                 for r_idx, (_, row) in enumerate(tbl3.iterrows(), start=1):
-                    for c_idx, val in enumerate(row): table3.cell(r_idx,c_idx).text = str(val)
+                    for c_idx, col in enumerate(cols_to_show):
+                        table3.cell(r_idx, c_idx).text = str(row[col])
+
 
                 # Slide 4: Tahmin
                 slide4 = prs.slides.add_slide(prs.slide_layouts[5])
