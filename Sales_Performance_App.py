@@ -65,7 +65,7 @@ if excel_file:
 
         
         # İl Bazlı Harita (Scatter Mapbox)
-        st.subheader("Şube Performansı Haritası (İl Bazında)")
+        st.subheader("Şube Performansı Haritası (İl)")
         # Dealer -> City ilişkilendirme
         dealer_city = df_cross[['DEALER_CODE', 'CITY']].drop_duplicates()
         dealer_city = dealer_city.dropna()
