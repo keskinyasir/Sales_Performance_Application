@@ -62,8 +62,64 @@ if excel_file:
         fig_time2 = px.line(df_time, x='YEARMONTH', y=['URUNHACIM'], title='Zaman Serisi Analizi - Hacim')
         st.plotly_chart(fig_time2, use_container_width=True)
 
+
+        
+        # İl Bazlı Harita (Scatter Mapbox)
         st.subheader("Şube Performansı Haritası (İl Bazında)")
-        st.info("Harita burada yer alacak.")
+        # Dealer -> City ilişkilendirme
+        dealer_city = df_cross[['DEALER_CODE', 'CITY']].drop_duplicates()
+        dealer_city = dealer_city.dropna()
+        dealer_city['DEALER_CODE'] = dealer_city['DEALER_CODE'] // 10
+        df_sales_map = pd.merge(df_sales,dealer_city, on='DEALER_CODE', how='inner')
+        df_city_sales = df_sales_map.groupby('CITY')['URUNADET'].sum().reset_index()
+
+        # GeoJSON yükleme
+        try:
+            with open('tr-cities.json', 'r', encoding='utf-8') as f:
+                geojson_data = json.load(f)
+        except FileNotFoundError:
+            st.error("GeoJSON dosyası bulunamadı. 'tr-cities.json' ekleyin.")
+            st.stop()
+
+        # Her ilin centroid koordinatını hesapla
+        centroids = {}
+        for feat in geojson_data['features']:
+            name = feat['properties']['name']
+            coords = []
+            geom = feat['geometry']
+            if geom['type'] == 'Polygon':
+                rings = geom['coordinates']
+            else:
+                rings = [ring for poly in geom['coordinates'] for ring in poly]
+            for ring in rings:
+                coords.extend(ring)
+            lons = [c[0] for c in coords]
+            lats = [c[1] for c in coords]
+            if lats and lons:
+                centroids[name] = {'lat': sum(lats)/len(lats), 'lon': sum(lons)/len(lons)}
+
+        # Koordinatları data frame'e ekle
+        df_city_sales['lat'] = df_city_sales['CITY'].map(lambda x: centroids.get(x, {}).get('lat', 38))
+        df_city_sales['lon'] = df_city_sales['CITY'].map(lambda x: centroids.get(x, {}).get('lon', 35))
+
+        # Scatter Mapbox
+        fig_map = px.scatter_mapbox(
+            df_city_sales,
+            lat='lat',
+            lon='lon',
+            size='URUNADET',
+            color='URUNADET',
+            hover_name='CITY',
+            hover_data={'URUNADET': True},
+            size_max=40,
+            zoom=5,
+            mapbox_style='open-street-map',
+            title='İl Bazında Toplam Ürün1 Satış Adedi'
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
+
+
+
 
     # -------- TAHMİN & RAPOR --------
     with tab3:
