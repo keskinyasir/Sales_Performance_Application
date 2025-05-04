@@ -123,55 +123,52 @@ if excel_file:
 
     # -------- TAHMİN & RAPOR --------
     with tab3:
-        st.subheader("Tahminleme (Prophet + Tüm Regresörler)")
-        # Forecast butonunda hesaplama ve saklama
+        st.subheader("Neden Prophet Kullanıyoruz?")
+        st.markdown(
+            "Prophet, satış verilerindeki mevsimsellik, tatil etkileri ve regresör ekleme imkanları sayesinde öngörü doğruluğunu artırmak için seçildi."
+        )
+        product = st.selectbox("Tahminlenecek Ürün", ["Ürün1", "Ürün2"])
         if st.button("Tahmini Hesapla"):
-            # 1) Aylık satış
-            monthly_sales = df_sales.groupby('YEARMONTH').agg({
-                'URUNADET':'sum','URUNHACIM':'sum',
-                'ABONE_YAS_0_3AY':'sum','ABONE_YAS_4_12AY':'sum',
-                'ABONE_YAS_1_3YAS':'sum','ABONE_YAS_3_YAS':'sum'
-            }).reset_index()
-            monthly_sales.columns = ['periode','y','URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS']
-            monthly_sales['ds'] = pd.to_datetime(monthly_sales['periode'], format='%Y%m')
-
-            # 2) Çapraz satış
-            cross_month = df_cross.groupby('AY').agg({
-                'ÇAPRAZ ÜRÜN ADET':'sum','5GUNIPTAL':'sum','6-45GUNIPTAL':'sum'
-            }).reset_index()
-            cross_month.columns = ['periode_cross','cross_sales','cancel_5d','cancel_6_45d']
-            cross_month['ds'] = pd.to_datetime(cross_month['periode_cross'], format='%Y%m')
-
-            # 3) Demografi sabit
+            # Veri hazırlığı
+            if product == "Ürün1":
+                df_main = (
+                    df_sales.groupby('YEARMONTH')[['URUNADET','URUNHACIM','ABONE_YAS_0_3AY','ABONE_YAS_4_12AY','ABONE_YAS_1_3YAS','ABONE_YAS_3_YAS']]
+                    .sum().reset_index()
+                )
+                df_main = df_main.rename(columns={'YEARMONTH':'ds','URUNADET':'y'})
+                regressors = ['URUNHACIM','ABONE_YAS_0_3AY','ABONE_YAS_4_12AY','ABONE_YAS_1_3YAS','ABONE_YAS_3_YAS']
+            else:
+                df_main = (
+                    df_cross.groupby('AY')[['ÇAPRAZ ÜRÜN ADET','5GUNIPTAL','6-45GUNIPTAL']]
+                    .sum().reset_index()
+                )
+                df_main = df_main.rename(columns={'AY':'ds','ÇAPRAZ ÜRÜN ADET':'y'})
+                regressors = ['5GUNIPTAL','6-45GUNIPTAL']
+            df_main['ds'] = pd.to_datetime(df_main['ds'])
+            # Demografi regresörler
             demo_mean = df_demo.groupby('IL').mean(numeric_only=True).mean().to_dict()
-
-            # 4) Birleştir ve regresör ekle
-            df_fc = pd.merge(monthly_sales,
-                             cross_month[['ds','cross_sales','cancel_5d','cancel_6_45d']],
-                             on='ds', how='left')
-            for k,v in demo_mean.items(): df_fc[k] = v
-
-            regressors = ['URUNHACIM','A0_3','A4_12','A1_3','A3_PLUS',
-                          'cross_sales','cancel_5d','cancel_6_45d'] + list(demo_mean.keys())
+            for k,v in demo_mean.items():
+                df_main[k] = v
+                regressors.append(k)
 
             # Prophet modeli
             m = Prophet()
-            for reg in regressors: m.add_regressor(reg)
-            m.fit(df_fc[['ds','y'] + regressors])
+            for r in regressors:
+                m.add_regressor(r)
+            m.fit(df_main[['ds','y']+regressors])
 
-            # Gelecek tahmin
+            # Gelecek ay
             future = m.make_future_dataframe(periods=1, freq='M')
-            last = df_fc.iloc[-1]
-            for reg in regressors: future[reg] = last[reg]
-            forecast = m.predict(future)
+            last = df_main.iloc[-1]
+            for r in regressors:
+                future[r] = last[r]
+            fg = m.predict(future)
 
-            # Sonuçları göster ve kaydet
-            st.plotly_chart(plot_plotly(m, forecast), use_container_width=True)
-            next_pred = forecast.loc[forecast['ds']==forecast['ds'].max(),'yhat'].iloc[0]
-            st.write(f"2023 Ocak öngörülen satış adedi: {next_pred:.0f}")
-
-            # State'e kaydet
-            st.session_state['forecast_df'] = forecast
+            # Görsel
+            st.plotly_chart(plot_plotly(m, fg), use_container_width=True)
+            pred = fg.loc[fg['ds']==fg['ds'].max(),'yhat'].iloc[0]
+            st.write(f"2023 Ocak öngörü ({product}): {pred:.0f}")
+            st.session_state['forecast_df'] = fg
 
         # ------------ Rapor İndir ------------
         st.markdown("---")
